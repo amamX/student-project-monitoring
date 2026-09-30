@@ -166,7 +166,7 @@ export default function DashboardDosen() {
                         p.owner?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Course Filter
-    const matchCourse = filterCourse === 'all' || p.course_id === filterCourse;
+    const matchCourse = filterCourse === 'all' || p.course_id?.toString() === filterCourse.toString();
 
     // Status Filter
     let matchStatus = true;

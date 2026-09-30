@@ -27,7 +27,7 @@ export default function Explore() {
       // We will show all projects to make the "Explore" lively.
       const { data: projectsData, error: projError } = await supabase
         .from('projects')
-        .select('*, course:courses(name, code), owner:users!owner_id(full_name)')
+        .select('*, course:courses(id, name, code), owner:users!owner_id(full_name)')
         .order('created_at', { ascending: false });
 
       if (projError) throw projError;
