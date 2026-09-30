@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-900: #1e3a8a;
+  
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  
+  --font-sans: 'Inter', sans-serif;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: rgba(248, 250, 252, 0.85); /* f8fafc */
+  --surface: rgba(255, 255, 255, 0.65);
+}
+
+.dark {
+  --background: rgba(15, 23, 42, 0.65); /* 0f172a */
+  --surface: rgba(30, 41, 59, 0.65); /* 1e293b */
+}
+
+body {
+  background-color: var(--background);
+  @apply text-slate-900 dark:text-slate-100;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
