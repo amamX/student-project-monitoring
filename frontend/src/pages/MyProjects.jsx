@@ -27,7 +27,7 @@ export default function MyProjects() {
   useEffect(() => {
     if (showForm && formRef.current) {
       setTimeout(() => {
-        formRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 150);
     }
   }, [showForm]);
@@ -378,7 +378,7 @@ export default function MyProjects() {
                 >
                   <Card className="h-full flex flex-col hover:border-primary-300 dark:hover:border-primary-700 transition-colors shadow-sm hover:shadow-xl hover:shadow-primary-500/10 overflow-hidden">
                     {project.image_url && (
-                      <div className="h-32 w-full bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0">
+                      <div className="h-48 w-full bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0">
                         <img src={project.image_url} alt={project.title} className="w-full h-full object-cover" />
                       </div>
                     )}

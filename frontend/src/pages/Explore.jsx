@@ -93,7 +93,7 @@ export default function Explore() {
                         p.course?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         p.owner?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchCourse = filterCourse === 'all' || (p.course?.id && p.course.id.toString() === filterCourse.toString());
+    const matchCourse = filterCourse === 'all' || (p.course_id && p.course_id.toString() === filterCourse.toString());
     
     return matchSearch && matchCourse;
   });
@@ -179,7 +179,7 @@ export default function Explore() {
                 <CardContent className="p-0 flex flex-col flex-1">
                   
                   {/* Card Image / Header Decoration */}
-                  <div className="h-32 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-xl border-b border-slate-100 dark:border-slate-800 relative overflow-hidden flex items-end p-4">
+                  <div className="h-48 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-xl border-b border-slate-100 dark:border-slate-800 relative overflow-hidden flex items-end p-4">
                     {project.image_url && (
                       <img src={project.image_url} alt={project.title} className="absolute inset-0 w-full h-full object-cover z-0" />
                     )}

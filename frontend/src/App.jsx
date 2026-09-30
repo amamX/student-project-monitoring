@@ -41,7 +41,7 @@ function App() {
 
   return (
     <AuthProvider>
-      <Toaster position="top-center" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white rounded-xl shadow-lg' }} />
+      <Toaster position="top-center" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white rounded-xl shadow-lg text-center' }} containerStyle={{ top: '50%', transform: 'translateY(-50%)', margin: 0, bottom: 'auto' }} />
       <Router>
         <Routes>
           {/* Public Routes */}
