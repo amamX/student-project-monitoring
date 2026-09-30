@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import supabase from '../supabaseClient';
 import { Link } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { Badge } from '../components/ui/Badge';
 import { Plus, FolderKanban, Loader2, ArrowRight, Compass, Layout, CheckCircle, Users, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 export default function MyProjects() {
   const { user, profile } = useAuth();
@@ -21,6 +22,15 @@ export default function MyProjects() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ title: '', description: '', course_id: '', image_file: null });
   const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef(null);
+
+  useEffect(() => {
+    if (showForm && formRef.current) {
+      setTimeout(() => {
+        formRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }
+  }, [showForm]);
 
   useEffect(() => {
     fetchData();
@@ -148,8 +158,9 @@ export default function MyProjects() {
           .eq('user_id', user.id);
       }
       fetchData();
+      toast.success(accept ? "Undangan diterima!" : "Undangan ditolak");
     } catch (err) {
-      alert("Gagal memproses undangan: " + err.message);
+      toast.error("Gagal memproses undangan: " + err.message);
     }
   };
 
@@ -211,9 +222,10 @@ export default function MyProjects() {
       await fetchData();
       setShowForm(false);
       setFormData({ title: '', description: '', course_id: '', image_file: null });
+      toast.success("Project berhasil dibuat!");
     } catch (error) {
       console.error('Error creating project:', error.message);
-      alert('Gagal membuat project: ' + error.message);
+      toast.error('Gagal membuat project: ' + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -270,10 +282,11 @@ export default function MyProjects() {
         <AnimatePresence>
           {showForm && (
             <motion.div
+              ref={formRef}
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden max-w-3xl mx-auto w-full"
+              className="overflow-hidden max-w-3xl mx-auto w-full scroll-mt-24"
             >
               <Card className="border-primary-100 dark:border-primary-900/30 bg-primary-50/50 dark:bg-primary-900/10 shadow-xl">
                 <CardContent className="p-6 sm:p-8">

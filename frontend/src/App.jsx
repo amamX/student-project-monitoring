@@ -14,6 +14,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { MainLayout } from './components/layout/MainLayout';
 import { WebLayout } from './components/layout/WebLayout';
 import { useAuth } from './context/AuthContext';
+import { Toaster } from 'react-hot-toast';
 
 const DynamicLayout = ({ isDark, setIsDark }) => {
   const { profile } = useAuth();
@@ -40,6 +41,7 @@ function App() {
 
   return (
     <AuthProvider>
+      <Toaster position="top-center" toastOptions={{ className: 'dark:bg-slate-800 dark:text-white rounded-xl shadow-lg' }} />
       <Router>
         <Routes>
           {/* Public Routes */}

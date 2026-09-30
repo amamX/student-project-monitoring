@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input';
 import supabase from '../supabaseClient';
 import { LogIn, GraduationCap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 export default function Login() {
   const [email, setEmail] = useState('dosen@test.com');
@@ -35,8 +36,10 @@ export default function Login() {
       // Note: We don't need to manually navigate here.
       // The onAuthStateChange in AuthContext will fetch the profile 
       // and the `if (user && profile)` block above will automatically handle the redirection.
+      toast.success("Login berhasil!");
     } catch (err) {
       setError(err.message);
+      toast.error("Gagal login: " + err.message);
       setIsLoading(false);
     }
   };

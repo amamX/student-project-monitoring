@@ -18,6 +18,7 @@ import {
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
+import toast from 'react-hot-toast';
 
 export default function DashboardDosen() {
   const { user } = useAuth();
@@ -151,9 +152,10 @@ export default function DashboardDosen() {
 
       const { error } = await supabase.from('projects').delete().eq('id', projectId);
       if (error) throw error;
+      toast.success('Project berhasil dihapus');
       fetchDashboardData();
     } catch (err) {
-      alert('Gagal menghapus project: ' + err.message);
+      toast.error('Gagal menghapus project: ' + err.message);
     }
   };
 

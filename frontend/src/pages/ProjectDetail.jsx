@@ -9,6 +9,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { Input } from '../components/ui/Input';
 import { CheckCircle, Circle, ArrowLeft, Loader2, AlertCircle, Upload, Link as LinkIcon, MessageSquare, Download, Trash2, Send, Users, UserPlus, Plus, Image as ImageIcon, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 export default function ProjectDetail() {
   const { id } = useParams();
@@ -94,7 +95,7 @@ export default function ProjectDetail() {
 
     } catch (error) {
       console.error('Error fetching project:', error.message);
-      alert('Gagal memuat project! ' + error.message);
+      toast.error('Gagal memuat project! ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -132,7 +133,7 @@ export default function ProjectDetail() {
       handleToggleTask(task, true);
     } else {
       if (!canCheckTask(task.milestone_id, task.order_index)) {
-        alert("Harus dikerjakan secara berurutan!");
+        toast.error("Harus dikerjakan secara berurutan!");
         return;
       }
       setSelectedTaskForProof({ ...task, isCustom: false });
@@ -153,7 +154,7 @@ export default function ProjectDetail() {
   const handleSubmitProof = async (e) => {
     e.preventDefault();
     if (!proofFile) {
-      alert("Harap unggah bukti gambar pengerjaan!");
+      toast.error("Harap unggah bukti gambar pengerjaan!");
       return;
     }
     setIsUploadingProof(true);
@@ -185,7 +186,7 @@ export default function ProjectDetail() {
       setSelectedTaskForProof(null);
       fetchProjectData();
     } catch (err) {
-      alert("Gagal upload bukti: " + err.message);
+      toast.error("Gagal upload bukti: " + err.message);
     } finally {
       setIsUploadingProof(false);
     }
@@ -244,7 +245,7 @@ export default function ProjectDetail() {
       setActiveMilestoneId(null);
       fetchProjectData();
     } catch (err) {
-      alert("Gagal menambahkan task: " + err.message);
+      toast.error("Gagal menambahkan task: " + err.message);
     }
   };
 
@@ -252,7 +253,7 @@ export default function ProjectDetail() {
     try {
       await supabase.from('project_tasks').delete().eq('id', ptId);
       fetchProjectData();
-    } catch(err) { alert(err.message); }
+    } catch(err) { toast.error(err.message); }
   };
 
   const handleAddLink = async (e) => {
@@ -262,21 +263,21 @@ export default function ProjectDetail() {
       await supabase.from('project_links').insert([{ project_id: id, url: newLink, label: 'Demo/Repo' }]);
       setNewLink('');
       fetchProjectData();
-    } catch (err) { alert(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
   const handleDeleteLink = async (linkId) => {
     try {
       await supabase.from('project_links').delete().eq('id', linkId);
       fetchProjectData();
-    } catch (err) { alert(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 52428800) {
-      alert("Maksimal ukuran file 50MB");
+      toast.error("Maksimal ukuran file 50MB");
       return;
     }
     setUploading(true);
@@ -292,7 +293,7 @@ export default function ProjectDetail() {
       await supabase.from('project_files').insert([{ project_id: id, file_url: publicUrl }]);
       fetchProjectData();
     } catch (err) {
-      alert('Gagal upload: ' + err.message);
+      toast.error('Gagal upload: ' + err.message);
     } finally {
       setUploading(false);
     }
@@ -302,7 +303,7 @@ export default function ProjectDetail() {
     try {
       await supabase.from('project_files').delete().eq('id', fileId);
       fetchProjectData();
-    } catch (err) { alert(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
   const handleAddComment = async (e) => {
@@ -313,14 +314,14 @@ export default function ProjectDetail() {
       if (error) throw error;
       setNewComment('');
       fetchProjectData();
-    } catch (err) { alert("Gagal mengirim pesan: " + err.message); }
+    } catch (err) { toast.error("Gagal mengirim pesan: " + err.message); }
   };
 
   const handleDeleteComment = async (commentId) => {
     try {
       await supabase.from('project_comments').delete().eq('id', commentId);
       fetchProjectData();
-    } catch (err) { alert(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
   const handleAddMember = async (e) => {
@@ -336,19 +337,19 @@ export default function ProjectDetail() {
         
       if (findError) throw findError;
       if (!users || users.length === 0) {
-        alert('Mahasiswa dengan NIM tersebut tidak ditemukan!');
+        toast.error('Mahasiswa dengan NIM tersebut tidak ditemukan!');
         return;
       }
       const studentToAdd = users[0];
 
       if (studentToAdd.id === project.owner_id) {
-        alert('Ini adalah ketua project!');
+        toast.error('Ini adalah ketua project!');
         return;
       }
 
       const alreadyMember = members.some(m => m.user_id === studentToAdd.id);
       if (alreadyMember) {
-        alert('Mahasiswa sudah ada di dalam tim!');
+        toast.error('Mahasiswa sudah ada di dalam tim!');
         return;
       }
 
@@ -363,7 +364,7 @@ export default function ProjectDetail() {
       setShowAddMember(false);
       fetchProjectData();
     } catch (err) {
-      alert('Gagal menambahkan anggota: ' + err.message);
+      toast.error('Gagal menambahkan anggota: ' + err.message);
     }
   };
 
@@ -372,7 +373,7 @@ export default function ProjectDetail() {
     try {
       await supabase.from('project_members').delete().eq('id', memberId);
       fetchProjectData();
-    } catch (err) { alert(err.message); }
+    } catch (err) { toast.error(err.message); }
   };
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;

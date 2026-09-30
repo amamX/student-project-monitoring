@@ -93,7 +93,7 @@ export default function Explore() {
                         p.course?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         p.owner?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchCourse = filterCourse === 'all' || p.course?.id === filterCourse;
+    const matchCourse = filterCourse === 'all' || (p.course?.id && p.course.id.toString() === filterCourse.toString());
     
     return matchSearch && matchCourse;
   });

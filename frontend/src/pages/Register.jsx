@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input';
 import supabase from '../supabaseClient';
 import { UserPlus, GraduationCap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 export default function Register() {
   const [fullName, setFullName] = useState('');
@@ -48,10 +49,11 @@ export default function Register() {
       if (error) throw error;
       
       // Auto redirect to login after successful register (or handle email confirm)
-      alert("Registrasi berhasil! Silakan login.");
+      toast.success("Registrasi berhasil! Silakan login.");
       navigate('/login');
     } catch (err) {
       setError(err.message);
+      toast.error(err.message);
     } finally {
       setIsLoading(false);
     }
