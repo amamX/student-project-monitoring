@@ -28,8 +28,8 @@ export default function MyProjects() {
 
   const fetchData = async () => {
     try {
-      // 1. Ambil list mata kuliah untuk form pilihan
-      const { data: coursesData } = await supabase.from('courses').select('id, name, code');
+      // 1. Ambil list mata kuliah untuk form pilihan beserta nama dosennya
+      const { data: coursesData } = await supabase.from('courses').select('id, name, code, lecturer:users!lecturer_id(full_name)');
       setCourses(coursesData || []);
 
       // 2. Ambil keanggotaan mahasiswa di project lain
@@ -292,7 +292,9 @@ export default function MyProjects() {
                       >
                         <option value="" disabled>-- Pilih Mata Kuliah --</option>
                         {courses.map(c => (
-                          <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                          <option key={c.id} value={c.id}>
+                            {c.code} - {c.name} {c.lecturer?.full_name ? `(Dosen: ${c.lecturer.full_name})` : ''}
+                          </option>
                         ))}
                       </select>
                     </div>
