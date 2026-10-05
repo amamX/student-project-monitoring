@@ -14,7 +14,8 @@ import {
   Bell,
   Home,
   FolderKanban,
-  Settings
+  Settings,
+  User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -101,11 +102,12 @@ export const WebLayout = ({ isDark, setIsDark }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
           
           <div className="flex items-center gap-8">
-            <Link to="/dashboard-mahasiswa" className="flex items-center gap-2 group">
-              <div className="bg-primary-600 p-1.5 rounded-lg group-hover:scale-105 transition-transform">
-                <GraduationCap className="w-5 h-5 text-white" />
+            <Link to="/dashboard-mahasiswa" className="flex items-center gap-3 group">
+              <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-indigo-600 shadow-lg shadow-primary-500/30 group-hover:shadow-primary-500/50 group-hover:scale-105 transition-all duration-300">
+                <div className="absolute inset-0 bg-white/20 rounded-xl blur-[2px]"></div>
+                <GraduationCap className="w-6 h-6 text-white relative z-10 drop-shadow-md" />
               </div>
-              <span className="font-bold text-xl hidden sm:block tracking-tight">ProjectMonitor</span>
+              <span className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-indigo-600 dark:from-primary-400 dark:to-indigo-400 hidden sm:block">SPMonitor</span>
             </Link>
 
             {/* Desktop Nav */}
@@ -182,8 +184,15 @@ export const WebLayout = ({ isDark, setIsDark }) => {
 
             {/* Profile Dropdown / Actions */}
             <div className="hidden sm:flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-800">
-              <div className="text-right">
-                <p className="text-sm font-semibold leading-tight">{profile?.full_name}</p>
+              <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-4 h-4 text-slate-400" />
+                )}
+              </div>
+              <div className="text-left mr-2">
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">{profile?.full_name}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{profile?.role}</p>
               </div>
               <Link to="/settings">
@@ -236,9 +245,18 @@ export const WebLayout = ({ isDark, setIsDark }) => {
                 );
               })}
               <div className="border-t border-slate-200 dark:border-slate-800 mt-2 pt-4 px-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold">{profile?.full_name}</p>
-                  <p className="text-xs text-slate-500 capitalize">{profile?.role}</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-5 h-5 text-slate-400" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{profile?.full_name}</p>
+                    <p className="text-xs text-slate-500 capitalize">{profile?.role}</p>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Link to="/settings" onClick={() => setIsMobileMenuOpen(false)}>
@@ -263,7 +281,7 @@ export const WebLayout = ({ isDark, setIsDark }) => {
       
       {/* Footer */}
       <footer className="py-8 text-center text-sm text-slate-500 border-t border-slate-200 dark:border-slate-800 bg-surface/50 mt-auto">
-        <p>&copy; {new Date().getFullYear()} ProjectMonitor. Platform pemantauan project mahasiswa.</p>
+        <p>&copy; {new Date().getFullYear()} SPMonitor. Platform pemantauan project mahasiswa.</p>
       </footer>
     </div>
   );

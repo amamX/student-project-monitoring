@@ -12,7 +12,9 @@ import {
   GraduationCap,
   Menu,
   X,
-  Settings
+  Settings,
+  User,
+  Bell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -39,7 +41,7 @@ export const MainLayout = ({ isDark, setIsDark }) => {
         <div className="bg-primary-600 p-2 rounded-xl">
           <GraduationCap className="w-6 h-6 text-white" />
         </div>
-        <span className="font-bold text-lg leading-tight">Project<br/>Monitor</span>
+        <span className="font-bold text-lg leading-tight">SPMonitor</span>
       </div>
       
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -60,16 +62,6 @@ export const MainLayout = ({ isDark, setIsDark }) => {
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
-        <div className="px-3">
-          <p className="text-sm font-semibold truncate">{profile?.full_name}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{profile?.role}</p>
-        </div>
-        <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 border-red-200 dark:border-red-900/30" onClick={handleSignOut}>
-          <LogOut className="w-4 h-4 mr-2" />
-          Logout
-        </Button>
-      </div>
     </>
   );
 
@@ -117,16 +109,47 @@ export const MainLayout = ({ isDark, setIsDark }) => {
             </button>
             <div className="md:hidden flex items-center gap-2">
               <GraduationCap className="w-6 h-6 text-primary-600" />
-              <span className="font-bold hidden sm:block">Project Monitor</span>
+              <span className="font-bold hidden sm:block">SPMonitor</span>
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hidden sm:block">
+              <Bell className="w-5 h-5" />
+            </button>
             <button 
               onClick={() => setIsDark(!isDark)}
               className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400"
             >
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            
+            <div className="w-px h-8 bg-slate-200 dark:bg-slate-800 hidden sm:block mx-2"></div>
+            
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-4 h-4 text-slate-400" />
+                )}
+              </div>
+              <div className="hidden sm:flex flex-col items-start">
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">{profile?.full_name}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">{profile?.role}</span>
+              </div>
+            </div>
+
+            <Link to="/settings" className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400 hidden sm:block">
+              <Settings className="w-5 h-5" />
+            </Link>
+
+            <button 
+              onClick={handleSignOut}
+              className="p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-red-500"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </header>

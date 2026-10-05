@@ -9,6 +9,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { Badge } from '../components/ui/Badge';
 import { Plus, FolderKanban, Loader2, ArrowRight, Compass, Layout, CheckCircle, Users, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ImageCropperModal } from '../components/ui/ImageCropperModal';
 import toast from 'react-hot-toast';
 
 export default function MyProjects() {
@@ -20,8 +21,10 @@ export default function MyProjects() {
   
   // Form State
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', course_id: '', image_file: null });
+  const [formData, setFormData] = useState({ title: '', description: '', course_id: '', class_name: '', image_file: null });
   const [submitting, setSubmitting] = useState(false);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [selectedFileToCrop, setSelectedFileToCrop] = useState(null);
   const formRef = useRef(null);
 
   useEffect(() => {
@@ -164,6 +167,18 @@ export default function MyProjects() {
     }
   };
 
+  const handleImageChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFileToCrop(e.target.files[0]);
+      setIsCropModalOpen(true);
+      e.target.value = null; // reset input
+    }
+  };
+
+  const handleCropComplete = (croppedFile) => {
+    setFormData({ ...formData, image_file: croppedFile });
+  };
+
   const handleCreateProject = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -197,6 +212,7 @@ export default function MyProjects() {
           title: formData.title,
           description: formData.description,
           course_id: formData.course_id,
+          class_name: formData.class_name,
           owner_id: user.id,
           image_url: uploadedImageUrl
         }])
@@ -221,7 +237,7 @@ export default function MyProjects() {
 
       await fetchData();
       setShowForm(false);
-      setFormData({ title: '', description: '', course_id: '', image_file: null });
+      setFormData({ title: '', description: '', course_id: '', class_name: '', image_file: null });
       toast.success("Project berhasil dibuat!");
     } catch (error) {
       console.error('Error creating project:', error.message);
@@ -311,6 +327,23 @@ export default function MyProjects() {
                         ))}
                       </select>
                     </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Kelas</label>
+                      <select 
+                        className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50 shadow-sm"
+                        value={formData.class_name}
+                        onChange={(e) => setFormData({...formData, class_name: e.target.value})}
+                        required
+                      >
+                        <option value="" disabled>-- Pilih Kelas --</option>
+                        <option value="3 A">Kelas 3 A</option>
+                        <option value="3 B">Kelas 3 B</option>
+                        <option value="3 C">Kelas 3 C</option>
+                        <option value="3 D">Kelas 3 D</option>
+                        <option value="3 E">Kelas 3 E</option>
+                        <option value="3 F">Kelas 3 F</option>
+                      </select>
+                    </div>
                     <Input 
                       label="Judul Project" 
                       placeholder="Contoh: Sistem Informasi Akademik" 
@@ -323,9 +356,12 @@ export default function MyProjects() {
                       <input 
                         type="file"
                         accept="image/*"
-                        onChange={(e) => setFormData({...formData, image_file: e.target.files[0]})}
+                        onChange={handleImageChange}
                         className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/50 dark:file:text-primary-400 focus:outline-none transition-colors"
                       />
+                      {formData.image_file && (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Gambar siap diupload: {formData.image_file.name}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Deskripsi Singkat</label>
@@ -378,20 +414,23 @@ export default function MyProjects() {
                 >
                   <Card className="h-full flex flex-col hover:border-primary-300 dark:hover:border-primary-700 transition-colors shadow-sm hover:shadow-xl hover:shadow-primary-500/10 overflow-hidden">
                     {project.image_url && (
-                      <div className="h-48 w-full bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0">
+                      <div className="h-48 w-full bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0 border-b border-slate-100 dark:border-slate-800">
                         <img src={project.image_url} alt={project.title} className="w-full h-full object-cover" />
                       </div>
                     )}
                     <CardContent className="p-6 flex flex-col flex-1">
                       <div className="flex items-start justify-between mb-4">
-                        <div className="flex flex-col gap-2">
-                          <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2.5 py-1 rounded-full w-fit">
+                        <div className="flex flex-wrap gap-2">
+                          <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2.5 py-1 rounded-md w-fit tracking-wide border border-primary-100 dark:border-primary-900/50">
                             {project.course?.code}
                           </span>
-                          <div className="flex gap-2">
-                            {project.isLate && <Badge variant="danger">Terlambat</Badge>}
-                            {project.progress === 100 && <Badge variant="success">Selesai</Badge>}
-                          </div>
+                          {project.class_name && (
+                            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1 rounded-md w-fit tracking-wide border border-indigo-100 dark:border-indigo-900/50">
+                              Kelas {project.class_name.toUpperCase().replace(/([0-9])\s*([A-Z])/gi, '$1 $2').trim()}
+                            </span>
+                          )}
+                          {project.isLate && <Badge variant="danger" className="py-1">Terlambat</Badge>}
+                          {project.progress === 100 && <Badge variant="success" className="py-1">Selesai</Badge>}
                         </div>
                       </div>
                       
@@ -425,6 +464,14 @@ export default function MyProjects() {
           </div>
         </section>
       </div>
+      <ImageCropperModal 
+        isOpen={isCropModalOpen}
+        onClose={() => setIsCropModalOpen(false)}
+        imageFile={selectedFileToCrop}
+        onCropCompleteAction={handleCropComplete}
+        aspect={16/9}
+        title="Sesuaikan Gambar Project"
+      />
     </div>
   );
 }

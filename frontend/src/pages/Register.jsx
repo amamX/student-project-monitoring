@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import supabase from '../supabaseClient';
-import { UserPlus, GraduationCap } from 'lucide-react';
+import { UserPlus, GraduationCap, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -67,6 +67,10 @@ export default function Register() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
+        <Link to="/" className="inline-flex items-center text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors mb-6">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Kembali ke Landing Page
+        </Link>
         <div className="flex flex-col items-center mb-8">
           <div className="bg-primary-600 p-3 rounded-2xl mb-4 shadow-lg shadow-primary-500/30">
             <GraduationCap className="w-8 h-8 text-white" />

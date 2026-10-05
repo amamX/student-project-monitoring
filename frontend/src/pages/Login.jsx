@@ -5,13 +5,13 @@ import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import supabase from '../supabaseClient';
-import { LogIn, GraduationCap } from 'lucide-react';
+import { LogIn, GraduationCap, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function Login() {
-  const [email, setEmail] = useState('dosen@test.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -52,11 +52,15 @@ export default function Login() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
+        <Link to="/" className="inline-flex items-center text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors mb-6">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Kembali ke Landing Page
+        </Link>
         <div className="flex flex-col items-center mb-8">
           <div className="bg-primary-600 p-3 rounded-2xl mb-4 shadow-lg shadow-primary-500/30">
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-center tracking-tight">Student Project Monitor</h1>
+          <h1 className="text-2xl font-bold text-center tracking-tight">SPMonitor</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Masuk untuk memantau progres project</p>
         </div>
 

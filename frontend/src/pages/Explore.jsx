@@ -13,9 +13,11 @@ export default function Explore() {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [coursesList, setCoursesList] = useState([]);
+  const [classesList, setClassesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCourse, setFilterCourse] = useState('all');
+  const [filterClass, setFilterClass] = useState('all');
 
   useEffect(() => {
     fetchExploreData();
@@ -27,7 +29,7 @@ export default function Explore() {
       // We will show all projects to make the "Explore" lively.
       const { data: projectsData, error: projError } = await supabase
         .from('projects')
-        .select('*, course:courses(id, name, code), owner:users!owner_id(full_name)')
+        .select('*, course:courses(id, name, code), owner:users!owner_id(full_name, avatar_url)')
         .order('created_at', { ascending: false });
 
       if (projError) throw projError;
@@ -68,7 +70,12 @@ export default function Explore() {
         });
         const uniqueMembers = [...new Set(teamMembers)];
 
-        return { ...p, progress, teamMembers: uniqueMembers };
+        let fixedClassName = p.class_name;
+        if (fixedClassName) {
+          fixedClassName = fixedClassName.toUpperCase().replace(/([0-9])\s*([A-Z])/gi, '$1 $2').trim();
+        }
+
+        return { ...p, class_name: fixedClassName, progress, teamMembers: uniqueMembers };
       });
 
       // Ambil daftar unik mata kuliah dari data project
@@ -79,6 +86,10 @@ export default function Explore() {
         }
       });
       setCoursesList(uniqueCourses);
+
+      // Ambil daftar kelas unik
+      const uniqueClasses = [...new Set(formattedProjects.map(p => p.class_name).filter(Boolean))];
+      setClassesList(uniqueClasses);
 
       setProjects(formattedProjects);
     } catch (error) {
@@ -94,8 +105,9 @@ export default function Explore() {
                         p.owner?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchCourse = filterCourse === 'all' || (p.course_id && p.course_id.toString() === filterCourse.toString());
+    const matchClass = filterClass === 'all' || p.class_name === filterClass;
     
-    return matchSearch && matchCourse;
+    return matchSearch && matchCourse && matchClass;
   });
 
   if (loading) {
@@ -152,6 +164,25 @@ export default function Explore() {
                 </select>
               </div>
 
+              {classesList.length > 0 && (
+                <>
+                  <div className="w-full sm:w-px sm:h-8 bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
+                  <div className="w-full sm:w-auto relative flex items-center px-2">
+                    <Filter className="absolute left-3 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <select 
+                      value={filterClass}
+                      onChange={(e) => setFilterClass(e.target.value)}
+                      className="w-full sm:w-48 pl-9 pr-4 py-3 bg-transparent border-none focus:ring-0 text-sm outline-none cursor-pointer text-slate-700 dark:text-slate-300 appearance-none font-medium"
+                    >
+                      <option value="all">Semua Kelas</option>
+                      {classesList.map(c => (
+                        <option key={c} value={c}>Kelas {c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
             </div>
           </motion.div>
         </div>
@@ -184,10 +215,16 @@ export default function Explore() {
                       <img src={project.image_url} alt={project.title} className="absolute inset-0 w-full h-full object-cover z-0" />
                     )}
                     <div className="absolute inset-0 bg-grid-slate-200/50 dark:bg-grid-slate-700/25 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.2))] z-0"></div>
-                    {project.image_url && <div className="absolute inset-0 bg-black/40 z-0"></div>}
-                    <span className="relative z-10 text-xs font-bold text-primary-700 dark:text-primary-300 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg shadow-sm">
-                      {project.course?.code}
-                    </span>
+                    <div className="relative z-10 flex flex-wrap gap-2">
+                      <span className="text-xs font-bold text-primary-700 dark:text-primary-300 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-sm border border-white/20 dark:border-slate-700/50">
+                        {project.course?.code}
+                      </span>
+                      {project.class_name && (
+                        <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-sm border border-white/20 dark:border-slate-700/50">
+                          Kelas {project.class_name.toUpperCase().replace(/([0-9])\s*([A-Z])/gi, '$1 $2').trim()}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="p-6 flex flex-col flex-1">
@@ -201,8 +238,12 @@ export default function Explore() {
                     
                     <div className="mt-auto pt-5 border-t border-slate-100 dark:border-slate-800/50 space-y-5">
                       <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300">
-                        <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400 flex items-center justify-center flex-shrink-0 font-bold uppercase text-xs">
-                          {project.owner?.full_name?.charAt(0) || 'U'}
+                        <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400 flex items-center justify-center flex-shrink-0 overflow-hidden border border-slate-200 dark:border-slate-700">
+                          {project.owner?.avatar_url ? (
+                            <img src={project.owner.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="font-bold uppercase text-xs">{project.owner?.full_name?.charAt(0) || 'U'}</span>
+                          )}
                         </div>
                         <div className="flex flex-col truncate">
                           <span className="truncate font-semibold" title={project.teamMembers?.join(', ')}>

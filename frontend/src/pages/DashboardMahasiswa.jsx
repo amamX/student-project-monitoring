@@ -9,6 +9,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { Badge } from '../components/ui/Badge';
 import { Plus, FolderKanban, Loader2, ArrowRight, Compass, Layout, CheckCircle, Users, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ImageCropperModal } from '../components/ui/ImageCropperModal';
 
 export default function DashboardMahasiswa() {
   const { user, profile } = useAuth();
@@ -19,8 +20,13 @@ export default function DashboardMahasiswa() {
   
   // Form State
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', course_id: '', image_file: null });
+  const [formData, setFormData] = useState({ title: '', description: '', course_id: '', class_name: '', image_file: null });
   const [submitting, setSubmitting] = useState(false);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [selectedFileToCrop, setSelectedFileToCrop] = useState(null);
+
+  // Activity Log State
+  const [activityLogs, setActivityLogs] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -125,6 +131,18 @@ export default function DashboardMahasiswa() {
       });
 
       setProjects(formattedProjects);
+
+      // 5. Ambil Activity Logs secara GLOBAL (bisa dilihat semua orang)
+      const { data: logsData, error: logsError } = await supabase
+        .from('activity_log')
+        .select('*, project:projects(title), user:users(full_name, avatar_url)')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (!logsError && logsData) {
+        setActivityLogs(logsData);
+      }
+
     } catch (error) {
       console.error('Error fetching data:', error.message);
     } finally {
@@ -151,6 +169,18 @@ export default function DashboardMahasiswa() {
     } catch (err) {
       alert("Gagal memproses undangan: " + err.message);
     }
+  };
+
+  const handleImageChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFileToCrop(e.target.files[0]);
+      setIsCropModalOpen(true);
+      e.target.value = null; // reset input
+    }
+  };
+
+  const handleCropComplete = (croppedFile) => {
+    setFormData({ ...formData, image_file: croppedFile });
   };
 
   const handleCreateProject = async (e) => {
@@ -186,6 +216,7 @@ export default function DashboardMahasiswa() {
           title: formData.title,
           description: formData.description,
           course_id: formData.course_id,
+          class_name: formData.class_name,
           owner_id: user.id,
           image_url: uploadedImageUrl
         }])
@@ -208,9 +239,17 @@ export default function DashboardMahasiswa() {
       const { error: ptError } = await supabase.from('project_tasks').insert(projectTasksPayload);
       if (ptError) throw ptError;
 
+      // 4. Catat ke Activity Log
+      await supabase.from('activity_log').insert([{
+        project_id: newProject.id,
+        user_id: user.id,
+        action_type: 'PROJECT_CREATED',
+        description: `Telah membuat project baru: ${formData.title} (Kelas: ${formData.class_name})`
+      }]);
+
       await fetchData();
       setShowForm(false);
-      setFormData({ title: '', description: '', course_id: '', image_file: null });
+      setFormData({ title: '', description: '', course_id: '', class_name: '', image_file: null });
     } catch (error) {
       console.error('Error creating project:', error.message);
       alert('Gagal membuat project: ' + error.message);
@@ -242,7 +281,7 @@ export default function DashboardMahasiswa() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
                 </span>
-                Selamat Datang di ProjectMonitor
+                Selamat Datang di SPMonitor
               </div>
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight mb-4">
                 Halo, <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600 dark:from-primary-400 dark:to-indigo-400">{profile?.full_name?.split(' ')[0] || 'Mahasiswa'}</span> 👋
@@ -378,6 +417,23 @@ export default function DashboardMahasiswa() {
                         ))}
                       </select>
                     </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Kelas</label>
+                      <select 
+                        className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50 shadow-sm"
+                        value={formData.class_name}
+                        onChange={(e) => setFormData({...formData, class_name: e.target.value})}
+                        required
+                      >
+                        <option value="" disabled>-- Pilih Kelas --</option>
+                        <option value="3 A">Kelas 3 A</option>
+                        <option value="3 B">Kelas 3 B</option>
+                        <option value="3 C">Kelas 3 C</option>
+                        <option value="3 D">Kelas 3 D</option>
+                        <option value="3 E">Kelas 3 E</option>
+                        <option value="3 F">Kelas 3 F</option>
+                      </select>
+                    </div>
                     <Input 
                       label="Judul Project" 
                       placeholder="Contoh: Sistem Informasi Akademik" 
@@ -390,9 +446,12 @@ export default function DashboardMahasiswa() {
                       <input 
                         type="file"
                         accept="image/*"
-                        onChange={(e) => setFormData({...formData, image_file: e.target.files[0]})}
+                        onChange={handleImageChange}
                         className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/50 dark:file:text-primary-400 focus:outline-none transition-colors"
                       />
+                      {formData.image_file && (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Gambar siap diupload: {formData.image_file.name}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Deskripsi Singkat</label>
@@ -445,20 +504,23 @@ export default function DashboardMahasiswa() {
                 >
                   <Card className="h-full flex flex-col hover:border-primary-300 dark:hover:border-primary-700 transition-colors shadow-sm hover:shadow-xl hover:shadow-primary-500/10 overflow-hidden">
                     {project.image_url && (
-                      <div className="h-32 w-full bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0">
+                      <div className="h-48 w-full bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0 border-b border-slate-100 dark:border-slate-800">
                         <img src={project.image_url} alt={project.title} className="w-full h-full object-cover" />
                       </div>
                     )}
                     <CardContent className="p-6 flex flex-col flex-1">
                       <div className="flex items-start justify-between mb-4">
-                        <div className="flex flex-col gap-2">
-                          <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2.5 py-1 rounded-full w-fit">
+                        <div className="flex flex-wrap gap-2">
+                          <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2.5 py-1 rounded-md w-fit tracking-wide border border-primary-100 dark:border-primary-900/50">
                             {project.course?.code}
                           </span>
-                          <div className="flex gap-2">
-                            {project.isLate && <Badge variant="danger">Terlambat</Badge>}
-                            {project.progress === 100 && <Badge variant="success">Selesai</Badge>}
-                          </div>
+                          {project.class_name && (
+                            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1 rounded-md w-fit tracking-wide border border-indigo-100 dark:border-indigo-900/50">
+                              Kelas {project.class_name.toUpperCase().replace(/([0-9])\s*([A-Z])/gi, '$1 $2').trim()}
+                            </span>
+                          )}
+                          {project.isLate && <Badge variant="danger" className="py-1">Terlambat</Badge>}
+                          {project.progress === 100 && <Badge variant="success" className="py-1">Selesai</Badge>}
                         </div>
                       </div>
                       
@@ -501,7 +563,50 @@ export default function DashboardMahasiswa() {
             </div>
           )}
         </section>
+
+        {/* Activity Log Section */}
+        {activityLogs.length > 0 && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-primary-100 dark:bg-primary-900/30 p-2 rounded-lg">
+                <TrendingUp className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight">Log Aktivitas Terbaru</h2>
+            </div>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+              <div className="space-y-4">
+                {activityLogs.map(log => (
+                  <div key={log.id} className="flex gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-800/20 items-start">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
+                      {log.user?.avatar_url ? (
+                        <img src={log.user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        <CheckCircle className="w-5 h-5 text-slate-400" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-slate-800 dark:text-slate-200">
+                        <span className="font-bold">{log.user?.full_name}</span> {log.description}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Di project <span className="font-medium text-primary-600">{log.project?.title}</span> • {new Date(log.created_at).toLocaleString('id-ID')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
       </div>
+      <ImageCropperModal 
+        isOpen={isCropModalOpen}
+        onClose={() => setIsCropModalOpen(false)}
+        imageFile={selectedFileToCrop}
+        onCropCompleteAction={handleCropComplete}
+        aspect={16/9}
+        title="Sesuaikan Gambar Project"
+      />
     </div>
   );
 }

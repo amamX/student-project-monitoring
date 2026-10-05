@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { ContainerScroll } from '../components/ui/container-scroll-animation';
 import { TestimonialsColumn } from '../components/ui/testimonials-columns-1';
 import { motion } from 'framer-motion';
-import { CheckSquare, Users, LineChart, Lightbulb, Globe, Moon, Sun } from 'lucide-react';
+import { CheckSquare, Users, LineChart, Lightbulb, Globe, Moon, Sun, Menu, X, GraduationCap } from 'lucide-react';
 import supabase from '../supabaseClient';
+import heroImage from '../assets/hero.jpg';
+import amLogo from '../assets/amamlogo.png';
 
 const testimonials = [
   {
@@ -70,30 +72,47 @@ const thirdColumn = testimonials.slice(6, 9);
 export default function LandingPage() {
   const [isDark, setIsDark] = useState(true);
   const [stats, setStats] = useState({ users: 0, projects: 0, dosen: 0 });
+  const [debugError, setDebugError] = useState(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     // Check initial dark mode class
     if (!document.documentElement.classList.contains('dark')) {
       document.documentElement.classList.add('dark');
     }
-    
-    // Fetch stats
+
+    // Smooth scrolling
+    document.documentElement.classList.add('scroll-smooth');
+
+    // Fetch stats via secure RPC (Security Definer)
     const fetchStats = async () => {
       try {
-        const { count: usersCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
-        const { count: dosenCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'dosen');
-        const { count: projectsCount } = await supabase.from('projects').select('*', { count: 'exact', head: true });
-        
-        setStats({
-          users: usersCount || 0,
-          dosen: dosenCount || 0,
-          projects: projectsCount || 0
-        });
-      } catch (error) {
-        console.error("Error fetching stats", error);
+        const { data, error } = await supabase.rpc('get_landing_stats');
+
+        if (error) {
+          console.error("Error fetching stats via RPC:", error);
+          setDebugError(error.message || JSON.stringify(error));
+          return;
+        }
+
+        if (data) {
+          setStats({
+            users: data.total_users || 0,
+            dosen: data.total_dosen || 0,
+            projects: data.total_projects || 0
+          });
+          setDebugError(null);
+        }
+      } catch (err) {
+        console.error("Error fetching stats", err);
+        setDebugError(err.message || String(err));
       }
     };
     fetchStats();
+
+    return () => {
+      document.documentElement.classList.remove('scroll-smooth');
+    };
   }, []);
 
   const toggleDarkMode = () => {
@@ -109,27 +128,76 @@ export default function LandingPage() {
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0a0a0a] text-white' : 'bg-gray-50 text-gray-900'} overflow-hidden font-sans`}>
       {/* Navigation */}
       <nav className={`flex items-center justify-between px-4 sm:px-6 py-4 md:px-12 border-b fixed top-0 w-full z-50 transition-colors duration-300 ${isDark ? 'border-white/5 bg-[#0a0a0a]/80' : 'border-gray-200 bg-white/80'} backdrop-blur-md`}>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-            <CheckSquare className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-3 z-50 group cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
+          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/50 group-hover:scale-105 transition-all duration-300">
+            <div className="absolute inset-0 bg-white/20 rounded-xl blur-[2px]"></div>
+            <GraduationCap className="w-6 h-6 text-white relative z-10 drop-shadow-md" />
           </div>
-          <span className="font-bold text-lg sm:text-xl tracking-tight hidden sm:block">ProjectMonitor</span>
+          <span className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600 hidden sm:block">SPMonitor</span>
         </div>
-        <div className="flex gap-2 sm:gap-4 items-center">
+
+        {/* Desktop Menu Links */}
+        <div className={`hidden md:flex items-center gap-8 font-semibold text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+          <a href="#beranda" className="relative group overflow-hidden py-1">
+            <span className={`group-hover:text-blue-500 transition-colors duration-300 relative z-10 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Beranda</span>
+            <span className="absolute bottom-0 left-0 w-full h-[2px] bg-blue-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out"></span>
+          </a>
+          <a href="#cara-kerja" className="relative group overflow-hidden py-1">
+            <span className={`group-hover:text-blue-500 transition-colors duration-300 relative z-10 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Cara Kerja</span>
+            <span className="absolute bottom-0 left-0 w-full h-[2px] bg-blue-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out"></span>
+          </a>
+          <a href="#testimoni" className="relative group overflow-hidden py-1">
+            <span className={`group-hover:text-blue-500 transition-colors duration-300 relative z-10 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Testimoni</span>
+            <span className="absolute bottom-0 left-0 w-full h-[2px] bg-blue-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out"></span>
+          </a>
+        </div>
+
+        <div className="flex gap-2 sm:gap-4 items-center z-50">
           <button onClick={toggleDarkMode} className={`p-2 rounded-full transition-colors ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-gray-200 text-gray-800'}`}>
             {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-          <Link to="/login" className={`px-4 sm:px-5 py-2 text-sm font-medium border rounded-full transition-colors ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-gray-300 hover:bg-gray-100'}`}>
-            Masuk
-          </Link>
-          <Link to="/register" className="px-4 sm:px-5 py-2 text-sm font-medium bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30">
-            Daftar
-          </Link>
+
+          <div className="hidden md:flex gap-2 sm:gap-4 items-center">
+            <Link to="/login" className={`px-4 sm:px-5 py-2 text-sm font-medium border rounded-full transition-colors ${isDark ? 'border-white/10 hover:bg-white/5' : 'border-gray-300 hover:bg-gray-100'}`}>
+              Masuk
+            </Link>
+            <Link to="/register" className="px-4 sm:px-5 py-2 text-sm font-medium bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30">
+              Daftar
+            </Link>
+          </div>
+
+          {/* Mobile Menu Toggle */}
+          <button
+            className={`md:hidden p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-gray-200 text-gray-800'}`}
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
       </nav>
 
+      {/* Mobile Menu Dropdown */}
+      {isMenuOpen && (
+        <div className={`fixed inset-0 z-40 pt-24 px-6 pb-6 flex flex-col md:hidden transition-colors duration-300 ${isDark ? 'bg-[#0a0a0a]' : 'bg-gray-50'}`}>
+          <div className="flex flex-col gap-6 text-lg font-medium">
+            <a href="#beranda" onClick={() => setIsMenuOpen(false)} className={`pb-4 border-b ${isDark ? 'border-white/10 text-white' : 'border-gray-200 text-gray-900'}`}>Beranda</a>
+            <a href="#cara-kerja" onClick={() => setIsMenuOpen(false)} className={`pb-4 border-b ${isDark ? 'border-white/10 text-white' : 'border-gray-200 text-gray-900'}`}>Cara Kerja</a>
+            <a href="#testimoni" onClick={() => setIsMenuOpen(false)} className={`pb-4 border-b ${isDark ? 'border-white/10 text-white' : 'border-gray-200 text-gray-900'}`}>Testimoni</a>
+
+            <div className="flex flex-col gap-3 mt-4">
+              <Link to="/login" onClick={() => setIsMenuOpen(false)} className={`w-full text-center px-5 py-3 text-sm font-bold border rounded-full transition-colors ${isDark ? 'border-white/20 text-white' : 'border-gray-300 text-gray-900'}`}>
+                Masuk
+              </Link>
+              <Link to="/register" onClick={() => setIsMenuOpen(false)} className="w-full text-center px-5 py-3 text-sm font-bold bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-lg shadow-blue-500/30">
+                Daftar Sekarang
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section with Container Scroll */}
-      <div className="flex flex-col overflow-hidden pt-16 sm:pt-20">
+      <div id="beranda" className="flex flex-col overflow-hidden pt-16 sm:pt-20">
         <ContainerScroll
           titleComponent={
             <div className="flex flex-col items-center gap-4 mb-2 sm:mb-4 px-4">
@@ -156,7 +224,7 @@ export default function LandingPage() {
           {/* Dashboard Preview Image */}
           <div className={`w-full h-full relative border rounded-xl sm:rounded-2xl overflow-hidden ${isDark ? 'bg-[#111] border-white/10' : 'bg-white border-gray-200 shadow-xl'}`}>
             <img
-              src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop"
+              src={heroImage}
               alt="Dashboard Preview"
               className={`w-full h-full object-cover ${isDark ? 'opacity-80' : 'opacity-100'}`}
               draggable={false}
@@ -182,16 +250,22 @@ export default function LandingPage() {
             <div className={`font-medium text-sm sm:text-base ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Dosen</div>
           </div>
         </div>
+        {debugError && (
+          <div className="max-w-2xl mx-auto mt-8 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-center text-red-500 text-sm">
+            <strong>Error Supabase RPC:</strong> {debugError}
+            <p className="mt-2 text-xs">Fungsi SQL "get_landing_stats" sepertinya belum dibuat atau permission belum dibuka (GRANT EXECUTE TO anon).</p>
+          </div>
+        )}
       </section>
 
       {/* Cara Kerja */}
-      <section className="py-16 sm:py-24 px-4 sm:px-6 md:px-12 max-w-6xl mx-auto">
+      <section id="cara-kerja" className="py-16 sm:py-24 px-4 sm:px-6 md:px-12 max-w-6xl mx-auto">
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-10 sm:mb-16 tracking-tight">Cara kerja</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className={`p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border transition-all duration-300 ${isDark ? 'border-white/5 bg-gradient-to-b from-[#151515] to-[#0a0a0a] hover:border-blue-500/30' : 'border-gray-200 bg-white hover:border-blue-400 shadow-sm hover:shadow-md'}`}>
             <span className="text-blue-500 text-xs sm:text-sm font-semibold mb-2 sm:mb-3 block">Langkah 1</span>
             <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3">Daftar akun</h3>
-            <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Pilih peran sebagai mahasiswa atau dosen. Buat profilmu dan mulai eksplorasi fitur ProjectMonitor.</p>
+            <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Pilih peran sebagai mahasiswa atau dosen. Buat profilmu dan mulai eksplorasi fitur SPMonitor.</p>
           </div>
           <div className={`p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border transition-all duration-300 ${isDark ? 'border-white/5 bg-gradient-to-b from-[#151515] to-[#0a0a0a] hover:border-blue-500/30' : 'border-gray-200 bg-white hover:border-blue-400 shadow-sm hover:shadow-md'}`}>
             <span className="text-blue-500 text-xs sm:text-sm font-semibold mb-2 sm:mb-3 block">Langkah 2</span>
@@ -204,7 +278,7 @@ export default function LandingPage() {
             <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Progres terhitung otomatis dari task yang selesai. Dosen dapat memberikan komentar pada tiap task.</p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-8">
           <div className={`flex flex-col items-center justify-center p-4 sm:p-8 border rounded-[1.5rem] sm:rounded-[2rem] transition-colors group ${isDark ? 'border-white/5 bg-[#111] hover:bg-[#151515]' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
             <CheckSquare className="w-6 h-6 sm:w-8 sm:h-8 mb-3 sm:mb-4 text-gray-500 group-hover:text-blue-500 transition-colors" />
@@ -226,7 +300,7 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className={`py-16 sm:py-24 relative overflow-hidden transition-colors duration-300 ${isDark ? 'bg-gradient-to-b from-[#0a0a0a] to-[#0f0f0f]' : 'bg-gradient-to-b from-gray-50 to-gray-100'}`}>
+      <section id="testimoni" className={`py-16 sm:py-24 relative overflow-hidden transition-colors duration-300 ${isDark ? 'bg-gradient-to-b from-[#0a0a0a] to-[#0f0f0f]' : 'bg-gradient-to-b from-gray-50 to-gray-100'}`}>
         <div className="container z-10 mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -236,7 +310,7 @@ export default function LandingPage() {
             className="flex flex-col items-center justify-center max-w-[540px] mx-auto mb-10 sm:mb-16"
           >
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-center">
-              Kata mereka tentang ProjectMonitor
+              Kata mereka tentang SPMonitor
             </h2>
           </motion.div>
 
@@ -270,19 +344,23 @@ export default function LandingPage() {
           <div className={`flex flex-col sm:flex-row items-center gap-3 sm:gap-4 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             <span className="font-medium">Dibuat oleh</span>
             <div className={`flex items-center gap-3 px-4 py-2 rounded-full border transition-colors ${isDark ? 'border-white/10 bg-[#111] hover:border-white/20' : 'border-gray-200 bg-gray-50 hover:border-gray-300'}`}>
-              <div className="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                AM
-              </div>
-              <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>Ahmad Maulana</span>
+              <img src={amLogo} alt="AM Logo" className="w-7 h-7 object-cover rounded-full shadow-sm" />
+              <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>amam</span>
               <div className={`flex items-center gap-3 ml-2 pl-3 border-l ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
-                <a href="#" className={`text-xs font-bold transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-blue-500'}`}>IG</a>
-                <a href="#" className={`text-xs font-bold transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-blue-500'}`}>IN</a>
-                <a href="#" className={`text-xs font-bold transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-blue-500'}`}>GH</a>
+                <a href="#" className={`transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-blue-500'}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
+                </a>
+                <a href="#" className={`transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-blue-500'}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" /><rect width="4" height="12" x="2" y="9" /><circle cx="4" cy="4" r="2" /></svg>
+                </a>
+                <a href="#" className={`transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-blue-500'}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.2c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" /><path d="M9 18c-4.51 2-5-2-7-2" /></svg>
+                </a>
               </div>
             </div>
           </div>
-          <div className={`text-xs sm:text-sm font-medium text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-            © 2026 ProjectMonitor. Platform pemantauan project mahasiswa.
+          <div className={`text-xs font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+            © {new Date().getFullYear()} SPMonitor. Platform pemantauan project mahasiswa.
           </div>
         </div>
       </footer>

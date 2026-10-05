@@ -46,10 +46,33 @@ export const AuthProvider = ({ children }) => {
         .eq('id', userId)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Row not found, create a default one to fix deleted db issue
+          const { data: authData } = await supabase.auth.getUser();
+          const email = authData?.user?.email || '';
+          const name = email.split('@')[0];
+          
+          const { data: newProfile, error: insertError } = await supabase
+            .from('users')
+            .insert([{ id: userId, email: email, full_name: name, role: 'mahasiswa' }])
+            .select()
+            .single();
+            
+          if (!insertError) {
+            setProfile(newProfile);
+            return;
+          }
+        }
+        throw error;
+      }
       setProfile(data);
     } catch (error) {
       console.error('Error fetching user profile:', error.message);
+      // If we completely fail to get profile, we might want to log out to prevent being stuck
+      if (!profile) {
+        supabase.auth.signOut();
+      }
     } finally {
       setLoading(false);
     }

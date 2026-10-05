@@ -10,26 +10,28 @@ import {
   AlertTriangle, 
   CheckCircle2,
   Search,
-  Filter,
   Loader2,
   BarChart3,
   Trash2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import toast from 'react-hot-toast';
+import { BarChart, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartBar } from '../components/ui/Chart';
 
 export default function DashboardDosen() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [stats, setStats] = useState({ total: 0, completed: 0, atRisk: 0, avgProgress: 0 });
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCourse, setFilterCourse] = useState('all');
+  const [filterClass, setFilterClass] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [coursesList, setCoursesList] = useState([]);
   const [chartData, setChartData] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -102,9 +104,15 @@ export default function DashboardDosen() {
 
         const isLate = new Date(course.deadline) < now && progress < 100;
         if (isLate) atRiskCount++;
+        
+        let fixedClassName = p.class_name;
+        if (fixedClassName) {
+          fixedClassName = fixedClassName.toUpperCase().replace(/([0-9])\s*([A-Z])/gi, '$1 $2').trim();
+        }
 
         return {
           ...p,
+          class_name: fixedClassName,
           course,
           progress,
           isLate,
@@ -124,13 +132,27 @@ export default function DashboardDosen() {
         const cProj = formattedProjects.filter(p => p.course_id === c.id);
         const avg = cProj.length > 0 ? cProj.reduce((acc, curr) => acc + curr.progress, 0) / cProj.length : 0;
         return {
-          name: c.code,
+          date: c.code, // for PointsChart
           fullName: c.name,
-          RataRataProgress: Math.round(avg),
+          total: Math.round(avg), // for PointsChart
           TotalProject: cProj.length
         };
       }).filter(c => c.TotalProject > 0);
       
+      // (We will compute unique classes dynamically in render to allow filtering)
+
+
+      // Ambil Activity Logs secara GLOBAL
+      const { data: logsData, error: logsError } = await supabase
+        .from('activity_log')
+        .select('*, project:projects(title), user:users(full_name, avatar_url)')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (!logsError && logsData) {
+        setActivityLogs(logsData);
+      }
+
       setChartData(cData);
       setProjects(formattedProjects);
     } catch (error) {
@@ -168,6 +190,9 @@ export default function DashboardDosen() {
     // Course Filter
     const matchCourse = filterCourse === 'all' || p.course_id?.toString() === filterCourse.toString();
 
+    // Class Filter
+    const matchClass = filterClass === 'all' || p.class_name === filterClass;
+
     // Status Filter
     let matchStatus = true;
     if (filterStatus === 'completed') matchStatus = p.progress === 100;
@@ -175,8 +200,28 @@ export default function DashboardDosen() {
     if (filterStatus === 'ongoing') matchStatus = p.progress > 0 && p.progress < 100 && !p.isLate;
     if (filterStatus === 'not_started') matchStatus = p.progress === 0;
 
-    return matchSearch && matchCourse && matchStatus;
+    return matchSearch && matchCourse && matchClass && matchStatus;
   });
+
+  const availableClasses = filterCourse === 'all'
+    ? [...new Set(projects.map(p => p.class_name).filter(Boolean))]
+    : [...new Set(projects.filter(p => p.course_id?.toString() === filterCourse.toString()).map(p => p.class_name).filter(Boolean))];
+
+  // Hitung leaderboard kelas
+  const classStats = availableClasses.map(className => {
+    const classProjects = filterCourse === 'all'
+      ? projects.filter(p => p.class_name === className)
+      : projects.filter(p => p.class_name === className && p.course_id?.toString() === filterCourse.toString());
+    const avg = classProjects.length > 0 ? classProjects.reduce((acc, curr) => acc + curr.progress, 0) / classProjects.length : 0;
+    return {
+      className,
+      date: `Kelas ${className}`, // for PointsChart
+      total: Math.round(avg), // for PointsChart
+      avgProgress: Math.round(avg),
+      totalProjects: classProjects.length,
+      courseName: classProjects[0]?.course?.code || ''
+    };
+  }).sort((a, b) => b.avgProgress - a.avgProgress); // Sort descending by progress
 
   if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
@@ -212,30 +257,79 @@ export default function DashboardDosen() {
           transition={{ duration: 0.5, delay: 0.1 }}
         >
           <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
-            <CardContent className="p-6">
+            <div className="p-6">
               <div className="flex items-center gap-2 mb-6">
                 <BarChart3 className="w-5 h-5 text-primary-500" />
                 <h2 className="text-lg font-bold">Rata-rata Progres per Mata Kuliah</h2>
               </div>
-              <div className="h-72 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                    <Tooltip 
-                      cursor={{ fill: '#f1f5f9' }}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Bar dataKey="RataRataProgress" name="Rata-rata Progres (%)" radius={[4, 4, 0, 0]}>
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.RataRataProgress === 100 ? '#10b981' : '#3b82f6'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <ChartContainer className="h-72 w-full" config={{ total: { label: "Progres (%)", color: "#3b82f6" } }}>
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis axisLine={false} dataKey="date" tickLine={false} tickMargin={10} />
+                  <YAxis axisLine={false} tickLine={false} domain={[0, 100]} />
+                  <ChartTooltip content={<ChartTooltipContent indicator="dashed" />} cursor={false} />
+                  <ChartBar dataKey="total" fill="var(--color-total)" radius={4} seriesIndex={0} />
+                </BarChart>
+              </ChartContainer>
+            </div>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Class Leaderboard */}
+      {classStats.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold tracking-tight">Peringkat Kelas Teraktif</h2>
+            {filterCourse !== 'all' && (
+              <Badge variant="primary" className="text-xs">Mata Kuliah Spesifik</Badge>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {classStats.slice(0, 3).map((stat, idx) => (
+              <Card key={stat.className} className={`border-slate-200 dark:border-slate-800 ${idx === 0 ? 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 border-amber-200 dark:border-amber-800/50' : 'bg-white dark:bg-slate-900'}`}>
+                <div className="p-5 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${idx === 0 ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400' : idx === 1 ? 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400' : idx === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400' : 'bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400'}`}>
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg leading-none mb-1">Kelas {stat.className}</h3>
+                      <p className="text-xs text-slate-500">{stat.totalProjects} Project • {filterCourse === 'all' ? stat.courseName : 'Filter Aktif'}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-xl font-black ${stat.avgProgress >= 80 ? 'text-emerald-500' : stat.avgProgress >= 50 ? 'text-primary-500' : 'text-orange-500'}`}>
+                      {stat.avgProgress}%
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <BarChart3 className="w-5 h-5 text-emerald-500" />
+                <h2 className="text-lg font-bold">Grafik Progres Kelas</h2>
               </div>
-            </CardContent>
+              <ChartContainer className="h-72 w-full" config={{ total: { label: "Progres (%)", color: "#10b981" } }}>
+                <BarChart data={classStats.slice().sort((a, b) => a.className.localeCompare(b.className))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis axisLine={false} dataKey="date" tickLine={false} tickMargin={10} />
+                  <YAxis axisLine={false} tickLine={false} domain={[0, 100]} />
+                  <ChartTooltip content={<ChartTooltipContent indicator="dashed" />} cursor={false} />
+                  <ChartBar dataKey="total" fill="var(--color-total)" radius={4} seriesIndex={0} />
+                </BarChart>
+              </ChartContainer>
+            </div>
           </Card>
         </motion.div>
       )}
@@ -271,6 +365,20 @@ export default function DashboardDosen() {
               ))}
             </select>
 
+            {/* Class Filter */}
+            {availableClasses.length > 0 && (
+              <select 
+                value={filterClass}
+                onChange={(e) => setFilterClass(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+              >
+                <option value="all">Semua Kelas</option>
+                {availableClasses.map(c => (
+                  <option key={c} value={c}>Kelas {c}</option>
+                ))}
+              </select>
+            )}
+
             {/* Search Box */}
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -303,20 +411,23 @@ export default function DashboardDosen() {
                 <Link to={`/project/${project.id}`} className="block h-full">
                   <Card className="h-full flex flex-col hover:border-primary-300 dark:hover:border-primary-700 transition-colors cursor-pointer overflow-hidden">
                     {project.image_url && (
-                      <div className="h-48 w-full bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0">
+                      <div className="h-48 w-full bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0 border-b border-slate-100 dark:border-slate-800">
                         <img src={project.image_url} alt={project.title} className="w-full h-full object-cover" />
                       </div>
                     )}
                     <CardContent className="p-5 flex flex-col flex-1 relative">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2 py-0.5 rounded w-fit">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex flex-wrap gap-2 flex-1">
+                          <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 px-2.5 py-1 rounded-md w-fit tracking-wide border border-primary-100 dark:border-primary-900/50">
                             {project.course?.code}
                           </span>
-                          <div className="flex gap-2 mt-1">
-                            {project.isLate && <Badge variant="danger">Terlambat</Badge>}
-                            {project.progress === 100 && <Badge variant="success">Selesai</Badge>}
-                          </div>
+                          {project.class_name && (
+                            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1 rounded-md w-fit tracking-wide border border-indigo-100 dark:border-indigo-900/50">
+                              Kelas {project.class_name.toUpperCase().replace(/([0-9])\s*([A-Z])/gi, '$1 $2').trim()}
+                            </span>
+                          )}
+                          {project.isLate && <Badge variant="danger" className="py-1">Terlambat</Badge>}
+                          {project.progress === 100 && <Badge variant="success" className="py-1">Selesai</Badge>}
                         </div>
                         <button 
                           onClick={(e) => handleDeleteProject(e, project.id)}
@@ -347,6 +458,38 @@ export default function DashboardDosen() {
           )}
         </div>
       </div>
+
+      {/* Activity Log Section */}
+      {activityLogs.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold tracking-tight shrink-0">Aktivitas Mahasiswa Terbaru</h2>
+          <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+            <CardContent className="p-0">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                {activityLogs.map(log => (
+                  <div key={log.id} className="p-4 flex items-start gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700 mt-0.5">
+                      {log.user?.avatar_url ? (
+                        <img src={log.user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4 text-slate-400" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-800 dark:text-slate-200">
+                        <span className="font-bold">{log.user?.full_name}</span> {log.description}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Di project <span className="font-medium text-primary-600">{log.project?.title}</span> • {new Date(log.created_at).toLocaleString('id-ID')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

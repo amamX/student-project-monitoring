@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Input } from '../components/ui/Input';
-import { CheckCircle, Circle, ArrowLeft, Loader2, AlertCircle, Upload, Link as LinkIcon, MessageSquare, Download, Trash2, Send, Users, UserPlus, Plus, Image as ImageIcon, X } from 'lucide-react';
+import { CheckCircle, Circle, ArrowLeft, Loader2, AlertCircle, Upload, Link as LinkIcon, MessageSquare, Download, Trash2, Send, Users, UserPlus, Plus, Image as ImageIcon, X, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -60,7 +60,7 @@ export default function ProjectDetail() {
       // 1. Fetch Project
       const { data: projData, error: projError } = await supabase
         .from('projects')
-        .select('*, course:courses(name, code, deadline), owner:users!owner_id(full_name, nim)')
+        .select('*, course:courses(name, code, deadline), owner:users!owner_id(full_name, nim, avatar_url)')
         .eq('id', id)
         .single();
       if (projError) throw projError;
@@ -77,7 +77,7 @@ export default function ProjectDetail() {
       setProjectTasks(ptData || []);
 
       // 4. Fetch Comments, Links, Files, Members
-      const { data: commentData, error: commentError } = await supabase.from('project_comments').select('*, user:users(full_name, role)').eq('project_id', id).order('created_at', { ascending: true });
+      const { data: commentData, error: commentError } = await supabase.from('project_comments').select('*, user:users(full_name, role, avatar_url)').eq('project_id', id).order('created_at', { ascending: true });
       if (commentError) console.error("Error fetching comments:", commentError);
       setComments(commentData || []);
 
@@ -87,7 +87,7 @@ export default function ProjectDetail() {
       const { data: fileData } = await supabase.from('project_files').select('*').eq('project_id', id);
       setFiles(fileData || []);
 
-      const { data: memberData, error: memErr } = await supabase.from('project_members').select('*, student:users!project_members_user_id_fkey(full_name, nim)').eq('project_id', id);
+      const { data: memberData, error: memErr } = await supabase.from('project_members').select('*, student:users!project_members_user_id_fkey(full_name, nim, avatar_url)').eq('project_id', id);
       if (memErr) {
         console.error("Member fetch error:", memErr);
       }
@@ -172,12 +172,26 @@ export default function ProjectDetail() {
         await supabase.from('project_tasks')
           .update({ is_checked: true, checked_at: new Date(), proof_image_url: publicUrl })
           .eq('id', selectedTaskForProof.id);
+          
+        await supabase.from('activity_log').insert([{
+          project_id: id,
+          user_id: profile.id,
+          action_type: 'TASK_COMPLETED',
+          description: `Telah menyelesaikan task custom "${selectedTaskForProof.custom_title}"`
+        }]);
       } else {
         const pt = projectTasks.find(p => p.task_id === selectedTaskForProof.id);
         if (pt) {
           await supabase.from('project_tasks')
             .update({ is_checked: true, checked_at: new Date(), proof_image_url: publicUrl })
             .eq('id', pt.id);
+            
+          await supabase.from('activity_log').insert([{
+            project_id: id,
+            user_id: profile.id,
+            action_type: 'TASK_COMPLETED',
+            description: `Telah menyelesaikan task "${selectedTaskForProof.title}"`
+          }]);
         }
       }
       
@@ -208,6 +222,13 @@ export default function ProjectDetail() {
         });
         const taskIdsToUncheck = tasksToUncheck.map(t => t.id);
         await supabase.from('project_tasks').update({ is_checked: false, checked_at: null, proof_image_url: null }).eq('project_id', id).in('task_id', taskIdsToUncheck);
+        
+        await supabase.from('activity_log').insert([{
+          project_id: id,
+          user_id: profile.id,
+          action_type: 'TASK_UNCHECKED',
+          description: `Membatalkan penyelesaian task "${task.title}"`
+        }]);
       }
       await fetchProjectData();
     } catch (error) {
@@ -222,6 +243,17 @@ export default function ProjectDetail() {
     setUpdating(true);
     try {
       await supabase.from('project_tasks').update({ is_checked: !currentStatus, checked_at: !currentStatus ? new Date() : null, proof_image_url: !currentStatus ? null : null }).eq('id', ptId);
+      
+      const pt = projectTasks.find(p => p.id === ptId);
+      if (pt) {
+        await supabase.from('activity_log').insert([{
+          project_id: id,
+          user_id: profile.id,
+          action_type: currentStatus ? 'TASK_UNCHECKED' : 'TASK_COMPLETED',
+          description: currentStatus ? `Membatalkan penyelesaian task custom "${pt.custom_title}"` : `Telah menyelesaikan task custom "${pt.custom_title}"`
+        }]);
+      }
+      
       await fetchProjectData();
     } catch (error) {
       console.error('Error updating task:', error.message);
@@ -261,6 +293,14 @@ export default function ProjectDetail() {
     if (!newLink) return;
     try {
       await supabase.from('project_links').insert([{ project_id: id, url: newLink, label: 'Demo/Repo' }]);
+      
+      await supabase.from('activity_log').insert([{
+        project_id: id,
+        user_id: profile.id,
+        action_type: 'LINK_ADDED',
+        description: `Menambahkan link project: ${newLink}`
+      }]);
+      
       setNewLink('');
       fetchProjectData();
     } catch (err) { toast.error(err.message); }
@@ -291,6 +331,14 @@ export default function ProjectDetail() {
 
       const { data: { publicUrl } } = supabase.storage.from('project_files').getPublicUrl(filePath);
       await supabase.from('project_files').insert([{ project_id: id, file_url: publicUrl }]);
+      
+      await supabase.from('activity_log').insert([{
+        project_id: id,
+        user_id: profile.id,
+        action_type: 'FILE_UPLOADED',
+        description: `Mengunggah file ZIP project`
+      }]);
+      
       fetchProjectData();
     } catch (err) {
       toast.error('Gagal upload: ' + err.message);
@@ -312,6 +360,14 @@ export default function ProjectDetail() {
     try {
       const { error } = await supabase.from('project_comments').insert([{ project_id: id, user_id: profile.id, content: newComment }]);
       if (error) throw error;
+      
+      await supabase.from('activity_log').insert([{
+        project_id: id,
+        user_id: profile.id,
+        action_type: 'COMMENT_ADDED',
+        description: `Menambahkan komentar baru`
+      }]);
+      
       setNewComment('');
       fetchProjectData();
     } catch (err) { toast.error("Gagal mengirim pesan: " + err.message); }
@@ -393,22 +449,42 @@ export default function ProjectDetail() {
       </button>
 
       {/* Header Project */}
-      <Card className="bg-gradient-to-br from-primary-600 to-primary-800 text-white border-0 shadow-lg shadow-primary-500/20 overflow-hidden">
-        <CardContent className="p-6 md:p-8 flex flex-col gap-4">
-          <div>
-            <div className="inline-block px-2.5 py-1 bg-white/20 backdrop-blur-sm rounded-md text-xs font-bold tracking-wider mb-3">
-              {project.course?.code} - {project.course?.name}
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-2 break-words">{project.title}</h1>
-            <p className="text-primary-100 opacity-90 max-w-2xl">{project.description}</p>
+      <Card className="bg-gradient-to-br from-primary-600 to-primary-800 text-white border-0 shadow-lg shadow-primary-500/20 overflow-hidden relative">
+        {project.image_url && (
+          <div className="absolute inset-0 z-0 opacity-10 blur-sm pointer-events-none">
+            <img src={project.image_url} alt={project.title} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-primary-900/50 mix-blend-multiply"></div>
           </div>
-          
-          <div className="mt-4 bg-black/20 p-4 rounded-xl border border-white/10 backdrop-blur-md">
-            <div className="flex justify-between text-sm font-medium mb-2">
-              <span>Progres Keseluruhan</span>
-              <span>{progressPercent}%</span>
+        )}
+        <CardContent className="p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 relative z-10 items-center">
+          {project.image_url && (
+            <div className="w-full md:w-64 aspect-video md:aspect-auto md:h-48 rounded-xl overflow-hidden shadow-2xl border-4 border-white/10 shrink-0">
+              <img src={project.image_url} alt={project.title} className="w-full h-full object-cover" />
             </div>
-            <ProgressBar progress={progressPercent} className="h-3" variant="success" />
+          )}
+          <div className="flex-1 w-full flex flex-col h-full justify-between">
+            <div>
+              <div className="inline-flex flex-wrap gap-2 mb-3">
+                <span className="px-2.5 py-1 bg-white/20 backdrop-blur-sm rounded-md text-xs font-bold tracking-wider">
+                  {project.course?.code} - {project.course?.name}
+                </span>
+                {project.class_name && (
+                  <span className="px-2.5 py-1 bg-primary-500/50 backdrop-blur-sm rounded-md text-xs font-bold tracking-wider">
+                    Kelas {project.class_name.toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-3 break-words">{project.title}</h1>
+              <p className="text-primary-100 opacity-90 max-w-2xl">{project.description}</p>
+            </div>
+            
+            <div className="mt-6 bg-black/20 p-4 rounded-xl border border-white/10 backdrop-blur-md">
+              <div className="flex justify-between text-sm font-medium mb-2">
+                <span>Progres Keseluruhan</span>
+                <span>{progressPercent}%</span>
+              </div>
+              <ProgressBar progress={progressPercent} className="h-3 shadow-inner" variant="success" />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -547,18 +623,36 @@ export default function ProjectDetail() {
             </CardHeader>
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900 rounded border border-slate-100 dark:border-slate-800">
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{project.owner?.full_name}</span>
-                  <span className="text-xs text-slate-500">Ketua Tim - {project.owner?.nim}</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                    {project.owner?.avatar_url ? (
+                      <img src={project.owner.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-4 h-4 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{project.owner?.full_name}</span>
+                    <span className="text-xs text-slate-500">Ketua Tim - {project.owner?.nim}</span>
+                  </div>
                 </div>
                 <Badge variant="primary">Owner</Badge>
               </div>
               
               {members.map(member => (
                 <div key={member.id} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-900 rounded border border-slate-100 dark:border-slate-800">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{member.student?.full_name}</span>
-                    <span className="text-xs text-slate-500">{member.student?.nim}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                      {member.student?.avatar_url ? (
+                        <img src={member.student.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-4 h-4 text-slate-400" />
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{member.student?.full_name}</span>
+                      <span className="text-xs text-slate-500">{member.student?.nim}</span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant={(member.status === 'accepted' || member.invite_status === 'diterima') ? 'success' : 'warning'}>
@@ -692,11 +786,20 @@ export default function ProjectDetail() {
                     const isMine = comment.user_id === profile?.id;
                     const isLecturer = comment.user?.role === 'dosen';
                     return (
-                      <div key={comment.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                        <div className={`max-w-[85%] p-3 rounded-2xl ${
-                          isLecturer ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100 rounded-tl-sm' 
-                          : isMine ? 'bg-primary-600 text-white rounded-tr-sm' 
-                          : 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 rounded-tl-sm'
+                      <div key={comment.id} className={`flex gap-2 ${isMine ? 'justify-end' : 'justify-start'} w-full`}>
+                        {!isMine && (
+                          <div className="w-8 h-8 mt-auto rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 shrink-0 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                            {comment.user?.avatar_url ? (
+                              <img src={comment.user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                              <User className="w-4 h-4 text-slate-400" />
+                            )}
+                          </div>
+                        )}
+                        <div className={`max-w-[75%] p-3 rounded-2xl ${
+                          isLecturer ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100 rounded-bl-sm' 
+                          : isMine ? 'bg-primary-600 text-white rounded-br-sm' 
+                          : 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 rounded-bl-sm'
                         }`}>
                           <div className="flex justify-between items-center mb-1 gap-4">
                             <span className={`text-xs font-bold ${isMine && !isLecturer ? 'text-primary-100' : isLecturer ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
@@ -710,6 +813,15 @@ export default function ProjectDetail() {
                           </div>
                           <p className="text-sm">{comment.content}</p>
                         </div>
+                        {isMine && (
+                          <div className="w-8 h-8 mt-auto rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 shrink-0 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                            {comment.user?.avatar_url ? (
+                              <img src={comment.user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                              <User className="w-4 h-4 text-slate-400" />
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
