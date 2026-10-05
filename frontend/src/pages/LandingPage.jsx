@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { CheckSquare, Users, LineChart, Lightbulb, Globe, Moon, Sun, Menu, X, GraduationCap } from 'lucide-react';
 import supabase from '../supabaseClient';
 import heroImage from '../assets/hero.jpg';
-import amLogo from '../assets/amamlogo.png';
+import amLogo from '../assets/amamLogo.png';
 
 const testimonials = [
   {
